@@ -1,0 +1,3 @@
+socket_close("gripper_socket")
+sleep(2)
+socket_open("127.0.0.1",63352,"gripper_socket")

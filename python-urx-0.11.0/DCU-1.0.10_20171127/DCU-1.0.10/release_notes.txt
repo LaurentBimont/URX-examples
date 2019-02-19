@@ -1,0 +1,8 @@
+Robotiq 2F Gripper Program for Universal Robots.
+
+This file describes the changes made to the software.
+
+------------------
+Release 1.0.10 - 2016/04/27
+------------------
+Visual aspect changed. GUI is using less resources. Bug fix in the URScript funcion rq_set_var.
