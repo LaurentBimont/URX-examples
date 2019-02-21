@@ -32,12 +32,12 @@ Les différentes commandes sont disponibles dans les fichiers python-urx-0.11.0/
                                                           et python-urx-0.11.0/urx/urrobot.py
 '''
 robot.movel([0.192, -0.616, 0.3, 3, 0, 0], acc=acc, vel=vel)        # Bouge le robot aux coordonnées cartésiennes
-#
-# robot.movej(angular_pos, acc=acc, vel=vel)	                    # Bouge le robot en articulaire (radian)
-# print(robot.get_pose())                                          # Renvoie le (x, y, z) du TCP
-# robot.up()
-# robot.down()
-# robot.translate([0.1, 0.1, 0.1])
+
+robot.movej(angular_pos, acc=acc, vel=vel)	                    # Bouge le robot en articulaire (radian)
+print(robot.get_pose())                                          # Renvoie le (x, y, z) du TCP
+robot.up()
+robot.down()
+robot.translate([0.1, 0.1, 0.1])
 
 # Commandes pince
 '''
