@@ -148,7 +148,13 @@ class RobotiqScript(URScript):
     def _send_gripper_opening(self, host, port):
         self._get_gripper_pos()
         time.sleep(0.1)
-        self._socket_open(host, port, "pc")
+        for i in range(10):
+            try:
+                self._socket_open(host, port+i, "pc")
+                print('gripper connected to port {}'.format(port+i))
+                break
+            except:
+                pass
         self._socket_send_string("POS", "pc")
         self._socket_close("pc")
 

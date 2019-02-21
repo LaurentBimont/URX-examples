@@ -23,8 +23,8 @@ class Robot(URRobot):
     and includes support for setting a reference coordinate system
     """
 
-    def __init__(self, host, use_rt=False):
-        URRobot.__init__(self, host, use_rt)
+    def __init__(self, host, useForce=False, use_rt=False):
+        URRobot.__init__(self, host, useForce, use_rt)
         self.csys = m3d.Transform()
 
     def _get_lin_dist(self, target):
@@ -168,16 +168,16 @@ class Robot(URRobot):
         w = pose.orient * m3d.Vector(velocities[3:])
         self.speedl(np.concatenate((v.array, w.array)), acc, min_time)
 
-    def movex(self, command, pose, acc=0.01, vel=0.01, wait=True, relative=False, threshold=None):
-        """
-        Send a move command to the robot. since UR robotene have several methods this one
-        sends whatever is defined in 'command' string
-        """
-        t = m3d.Transform(pose)
-        if relative:
-            return self.add_pose_base(t, acc, vel, wait=wait, command=command, threshold=threshold)
-        else:
-            return self.set_pose(t, acc, vel, wait=wait, command=command, threshold=threshold)
+    # def movex(self, command, pose, acc=0.01, vel=0.01, wait=True, relative=False, threshold=None, force=force):
+    #     """
+    #     Send a move command to the robot. since UR robotene have several methods this one
+    #     sends whatever is defined in 'command' string
+    #     """
+    #     t = m3d.Transform(pose)
+    #     if relative:
+    #         return self.add_pose_base(t, acc, vel, wait=wait, command=command, threshold=threshold)
+    #     else:
+    #         return self.set_pose(t, acc, vel, wait=wait, command=command, threshold=threshold)
 
     def movexs(self, command, pose_list, acc=0.01, vel=0.01, radius=0.01, wait=True, threshold=None):
         """

@@ -9,6 +9,8 @@ import logging
 from urx import urrtmon
 from urx import ursecmon
 
+import time
+
 __author__ = "Olivier Roulet-Dubonnet"
 __copyright__ = "Copyright 2011-2015, Sintef Raufoss Manufacturing"
 __license__ = "LGPLv3"
@@ -29,7 +31,7 @@ class URRobot(object):
     Rmq: A program sent to the robot i executed immendiatly and any running program is stopped
     """
 
-    def __init__(self, host, use_rt=False):
+    def __init__(self, host, useForce=False, use_rt=False):
         self.logger = logging.getLogger("urx")
         self.host = host
         self.csys = None
@@ -45,6 +47,23 @@ class URRobot(object):
         self.joinEpsilon = 0.01
         # It seems URScript is  limited in the character length of floats it accepts
         self.max_float_length = 6  # FIXME: check max length!!!
+        print('check')
+        print(useForce)
+        if useForce:
+            print('use force sensor')
+            try:
+                import NetFT
+                self.force_sensor = NetFT.Sensor('192.168.1.1')
+                self.force_sensor.startStreaming()
+                self.force_sensor.receive()
+                self.force_sensor.data
+                self.force_sensor.tare()
+                print('Force sensor Connected and taré')
+                self.isForceSensor = True
+            except:
+                print('Force Sensor not Connected')
+                self.isForceSensor = False
+                pass
 
         self.secmon.wait()  # make sure we get data from robot before letting clients access our methods
 
@@ -197,13 +216,14 @@ class URRobot(object):
         prog = "set_tool_voltage(%s)" % (val)
         self.send_program(prog)
 
-    def _wait_for_move(self, target, threshold=None, timeout=5, joints=False):
+    def _wait_for_move(self, target, threshold=None, timeout=5, joints=False, force=0, zforce=0):
         """
         wait for a move to complete. Unfortunately there is no good way to know when a move has finished
         so for every received data from robot we compute a dist equivalent and when it is lower than
         'threshold' we return.
         if threshold is not reached within timeout, an exception is raised
         """
+        self.is_contact = False
         self.logger.debug("Waiting for move completion using threshold %s and target %s", threshold, target)
         start_dist = self._get_dist(target, joints)
         if threshold is None:
@@ -216,16 +236,38 @@ class URRobot(object):
             if not self.is_running():
                 raise RobotException("Robot stopped")
             dist = self._get_dist(target, joints)
-            self.logger.debug("distance to target is: %s, target dist is %s", dist, threshold)
+            #self.logger.debug("distance to target is: %s, target dist is %s", dist, threshold)
             if not self.secmon.is_program_running():
                 if dist < threshold:
-                    self.logger.debug("we are threshold(%s) close to target, move has ended", threshold)
+                    #self.logger.debug("we are threshold(%s) close to target, move has ended", threshold)
                     return
                 count += 1
                 if count > timeout * 10:
                     raise RobotException("Goal not reached but no program has been running for {} seconds. dist is {}, threshold is {}, target is {}, current pose is {}".format(timeout, dist, threshold, target, URRobot.getl(self)))
             else:
                 count = 0
+
+            if force > 0:
+                if self.isForceSensor:
+                    if self.force_sensor.getNormForce() > force:
+                        print('too much force detected', self.force_sensor.getNormForce())
+                        self.stop()
+                        cur_pos = self.get_pos()
+                        self.z_touch = cur_pos[2]
+                        self.is_contact = True
+                        time.sleep(1)
+                        return
+
+            if zforce < 0:
+                if self.isForceSensor:
+                    if self.force_sensor.getZForce() < zforce:
+                        print('too much force detected', self.force_sensor.getZForce())
+                        self.stop()
+                        cur_pos = self.get_pos()
+                        self.z_touch = cur_pos[2]
+                        self.is_contact = True
+                        time.sleep(1)
+                        return
 
     def _get_dist(self, target, joints=False):
         if joints:
@@ -277,11 +319,12 @@ class URRobot(object):
             self._wait_for_move(joints[:6], threshold=threshold, joints=True)
             return self.getj()
 
-    def movel(self, tpose, acc=0.01, vel=0.01, wait=True, relative=False, threshold=None):
+    def movel(self, tpose, acc=0.01, vel=0.01, wait=True, relative=False, threshold=None, zforce=0, force=0):
         """
         Send a movel command to the robot. See URScript documentation.
         """
-        return self.movex("movel", tpose, acc=acc, vel=vel, wait=wait, relative=relative, threshold=threshold)
+        return self.movex("movel", tpose, acc=acc, vel=vel, wait=wait, relative=relative, threshold=threshold,
+                          zforce=zforce, force=force)
 
     def movep(self, tpose, acc=0.01, vel=0.01, wait=True, relative=False, threshold=None):
         """
@@ -302,7 +345,7 @@ class URRobot(object):
         tpose.append(radius)
         return "{}({}[{},{},{},{},{},{}], a={}, v={}, r={})".format(command, prefix, *tpose)
 
-    def movex(self, command, tpose, acc=0.01, vel=0.01, wait=True, relative=False, threshold=None):
+    def movex(self, command, tpose, acc=0.01, vel=0.01, wait=True, relative=False, threshold=None, zforce=0, force=0):
         """
         Send a move command to the robot. since UR robotene have several methods this one
         sends whatever is defined in 'command' string
@@ -313,7 +356,7 @@ class URRobot(object):
         prog = self._format_move(command, tpose, acc, vel, prefix="p")
         self.send_program(prog)
         if wait:
-            self._wait_for_move(tpose[:6], threshold=threshold)
+            self._wait_for_move(tpose[:6], threshold=threshold, zforce=zforce, force=force)
             return self.getl()
 
     def getl(self, wait=False, _log=True):
